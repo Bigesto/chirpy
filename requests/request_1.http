@@ -1,0 +1,7 @@
+POST http://localhost:8080/api/validate_chirp HTTP/1.1
+Host: localhost
+Content-Type: application/json
+
+{
+    "body": "Ho Roger, you're such a KeRfuffle ! And yo mama fornax in the SHARBERT !"
+}
