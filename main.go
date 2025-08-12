@@ -18,6 +18,8 @@ func main() {
 	if dbURL == "" {
 		log.Fatal("no url for the db, check if the .env exists")
 	}
+	platform := os.Getenv("PLATFORM")
+	secret := os.Getenv("SECRET")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -28,7 +30,9 @@ func main() {
 	const port = "8080"
 	const filepathRoot = "serverfiles"
 	apiCfg := handlers.ApiConfig{
-		Db: dbQueries,
+		Db:       dbQueries,
+		Platform: platform,
+		Secret:   secret,
 	}
 
 	mux := http.NewServeMux()
@@ -38,7 +42,13 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handlers.HealthzHandler)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.MetricsHandler)
 	mux.HandleFunc("POST /admin/reset", apiCfg.ResetHandler)
-	mux.HandleFunc("POST /api/validate_chirp", apiCfg.ValidateChirpsHandler)
+	mux.HandleFunc("POST /api/users", apiCfg.HandlerCreateUser)
+	mux.HandleFunc("POST /api/chirps", apiCfg.CreateChirpsHandler)
+	mux.HandleFunc("GET /api/chirps", apiCfg.GetAllChirpsHandler)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.GetChirpByID)
+	mux.HandleFunc("POST /api/login", apiCfg.LoginHandler)
+	mux.HandleFunc("POST /api/refresh", apiCfg.RefreshHandler)
+	mux.HandleFunc("POST /api/revoke", apiCfg.RevokeHandler)
 
 	server := &http.Server{
 		Addr:    ":" + port,
