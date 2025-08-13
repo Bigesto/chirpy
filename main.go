@@ -49,6 +49,7 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiCfg.LoginHandler)
 	mux.HandleFunc("POST /api/refresh", apiCfg.RefreshHandler)
 	mux.HandleFunc("POST /api/revoke", apiCfg.RevokeHandler)
+	mux.HandleFunc("PUT /api/users", apiCfg.UpdateUserHandler)
 
 	server := &http.Server{
 		Addr:    ":" + port,

@@ -74,6 +74,23 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	return i, err
 }
 
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, created_at, updated_at, email, hashed_password FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.HashedPassword,
+	)
+	return i, err
+}
+
 const getUserIDByRefreshToken = `-- name: GetUserIDByRefreshToken :one
 SELECT users.id
 FROM users
@@ -86,4 +103,21 @@ func (q *Queries) GetUserIDByRefreshToken(ctx context.Context, token string) (uu
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const updateUser = `-- name: UpdateUser :exec
+UPDATE users
+SET email = $2, hashed_password = $3
+WHERE id = $1
+`
+
+type UpdateUserParams struct {
+	ID             uuid.UUID
+	Email          string
+	HashedPassword string
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.ExecContext(ctx, updateUser, arg.ID, arg.Email, arg.HashedPassword)
+	return err
 }
