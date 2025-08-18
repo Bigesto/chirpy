@@ -18,11 +18,12 @@ type User struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Email        string    `json:"email"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 	Token        string    `json:"token,omitempty"`
 	RefreshToken string    `json:"refresh_token,omitempty"`
 }
 
-func (cfg *ApiConfig) HandlerCreateUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Password string `json:"password"`
 		Email    string `json:"email"`
@@ -67,10 +68,11 @@ func (cfg *ApiConfig) HandlerCreateUser(w http.ResponseWriter, r *http.Request) 
 
 	code := 201
 	payload := User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		IsChirpyRed: false,
 	}
 
 	respondWithJSON(w, code, payload)

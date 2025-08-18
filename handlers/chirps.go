@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -124,15 +125,39 @@ func validateChirp(body string) (string, error) {
 }
 
 func (cfg *ApiConfig) GetAllChirpsHandler(w http.ResponseWriter, r *http.Request) {
-	chirps, err := cfg.Db.GetAllChirps(r.Context())
-	if err != nil {
-		code := 500
-		msg := "Something went wrong getting the chirps."
-		respondWithError(w, code, msg)
-		return
+	stringUserID := r.URL.Query().Get("author_id")
+	sorted := r.URL.Query().Get("sort")
+
+	var chirps []database.Chirp
+	var err error
+
+	if stringUserID == "" {
+		chirps, err = cfg.Db.GetAllChirps(r.Context())
+		if err != nil {
+			code := 500
+			msg := "Something went wrong getting the chirps."
+			respondWithError(w, code, msg)
+			return
+		}
+	} else {
+		userID, err := uuid.Parse(stringUserID)
+		if err != nil {
+			code := 400
+			msg := "Bad Request"
+			respondWithError(w, code, msg)
+			return
+		}
+
+		chirps, err = cfg.Db.GetChirpsByUserID(r.Context(), userID)
+		if err != nil {
+			code := 500
+			msg := "Something went wrong getting the chirps."
+			respondWithError(w, code, msg)
+			return
+		}
 	}
 
-	chirpsList := []ChirpStruct{}
+	chirpsList := make([]ChirpStruct, 0, len(chirps))
 
 	for _, chirp := range chirps {
 		structuredChirp := ChirpStruct{
@@ -146,11 +171,17 @@ func (cfg *ApiConfig) GetAllChirpsHandler(w http.ResponseWriter, r *http.Request
 		chirpsList = append(chirpsList, structuredChirp)
 	}
 
+	if sorted == "desc" {
+		sort.Slice(chirpsList, func(i, j int) bool {
+			return chirpsList[i].CreatedAt.After(chirpsList[j].CreatedAt)
+		})
+	}
+
 	code := 200
 	respondWithJSON(w, code, chirpsList)
 }
 
-func (cfg *ApiConfig) GetChirpByID(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) GetChirpByIDHandler(w http.ResponseWriter, r *http.Request) {
 	chirpIDString := r.PathValue("chirpID")
 
 	chirpID, err := uuid.Parse(chirpIDString)
@@ -184,4 +215,63 @@ func (cfg *ApiConfig) GetChirpByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, 200, answer)
+}
+
+func (cfg *ApiConfig) DeleteChirpHandler(w http.ResponseWriter, r *http.Request) {
+	accessToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		code := 401
+		msg := "token invalid"
+		respondWithError(w, code, msg)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(accessToken, cfg.Secret)
+	if err != nil {
+		code := 401
+		msg := "Invalid token."
+		respondWithError(w, code, msg)
+		return
+	}
+
+	chirpIDString := r.PathValue("chirpID")
+
+	chirpID, err := uuid.Parse(chirpIDString)
+	if err != nil {
+		code := 400
+		msg := "Bad request."
+		respondWithError(w, code, msg)
+		return
+	}
+
+	chirp, err := cfg.Db.GetChirpByID(r.Context(), chirpID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			code := 404
+			msg := "Chirp not found."
+			respondWithError(w, code, msg)
+			return
+		}
+		code := 500
+		msg := "Something went wrong."
+		respondWithError(w, code, msg)
+		return
+	}
+
+	if chirp.UserID != userID {
+		code := 403
+		msg := "Non."
+		respondWithError(w, code, msg)
+		return
+	}
+
+	err = cfg.Db.DeleteChirpByID(r.Context(), chirpID)
+	if err != nil {
+		code := 500
+		msg := "Something went wrong."
+		respondWithError(w, code, msg)
+		return
+	}
+
+	w.WriteHeader(204)
 }

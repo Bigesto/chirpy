@@ -64,19 +64,18 @@ func (cfg *ApiConfig) UpdateUserHandler(w http.ResponseWriter, r *http.Request) 
 
 	user, err := cfg.Db.GetUserByID(r.Context(), userID)
 	if err != nil {
-		if err != nil {
-			code := 500
-			msg := "User error"
-			respondWithError(w, code, msg)
-			return
-		}
+		code := 500
+		msg := "User error"
+		respondWithError(w, code, msg)
+		return
 	}
 
 	answer := User{
-		ID:        userID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:          userID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	}
 
 	respondWithJSON(w, 200, answer)
